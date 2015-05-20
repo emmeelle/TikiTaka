@@ -1,4 +1,13 @@
 package code;
+import jade.core.AID;
+import jade.core.Agent;
+import jade.core.Profile;
+import jade.core.ProfileImpl;
+import jade.core.Runtime;
+import jade.lang.acl.ACLMessage;
+import jade.wrapper.AgentContainer;
+import jade.wrapper.AgentController;
+import jade.*;
 import processing.core.*;
 
 public class Futsal extends PApplet {
@@ -18,6 +27,9 @@ public class Futsal extends PApplet {
 	int ball; // jersey of the player who has the ball
 	int ball_passed = 0; // flag aggiornato ad ogni turno se è stata passata la palla.
 	int enemy_near = 120; // soglia per cui considero me marcato stretto e passo la palla;
+	AgentContainer mc;
+	AgentController smith;
+	AgentContainer cont;
 	public void setup() {
 	  size(600,520);
 	  frameRate(5);
@@ -67,7 +79,30 @@ public class Futsal extends PApplet {
 	     noLoop();
 	     redraw();
 	   }
-	  
+//	   try{
+//	   Runtime rt = Runtime.instance();
+//	   rt.setCloseVM(true);
+//	   Profile pMain = new ProfileImpl(null, 8888, null);
+//	   System.out.println("Launching a whole in-process platform..."+pMain);
+//	   mc = rt.createMainContainer(pMain);
+//	   ProfileImpl pContainer = new ProfileImpl(null, 8888, null);
+//	   cont = rt.createAgentContainer(pContainer);
+//	   Integer i=0;
+//	   smith = mc.createNewAgent("smith", DefAgent.class.getName(), new Object[]{i});
+//	  
+//		home[1].setAgent(smith);
+//		home[2].setAgent(smith);
+//		home[3].setAgent(smith);
+//		home[4].setAgent(smith);
+//	   smith.start();
+//	   }
+//	   catch(Exception e) {
+//	        e.printStackTrace();
+//	   }
+	}
+	
+	void setBallPassed(){
+		
 	}
 	public void keyPressed() {
 	  if (random == 0) {
@@ -309,6 +344,7 @@ public class Futsal extends PApplet {
 	  int mystroke; //colore bordo
 	  int numtrk; // colore maglia
 	  int start_x,start_y,wdt,hdt; // zona in cui si può muovere l'attaccante
+	  private AgentController myAgent;
 	  // Cell Constructor
 	  Offender(int x, int y, int number, int r, int g, int b, int mystroke, int numtrk) {
 	    this.x=x;
@@ -319,7 +355,11 @@ public class Futsal extends PApplet {
 	    this.b=b;
 	    this.mystroke=mystroke;
 	    this.numtrk= numtrk;
-	  } 
+	  }
+	  void setAgent(AgentController agent) {
+		  this.myAgent = agent;
+	  }
+	  
 	  void display()
 	  {
 	  stroke(mystroke);
@@ -365,6 +405,7 @@ public class Futsal extends PApplet {
 	      if (marked(number)!=0) {
 	        ball_passed = 1;
 	        ball = home[findNextPlayer()].number;
+	        
 	      }
 	      
 	    }
