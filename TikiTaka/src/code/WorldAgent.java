@@ -195,37 +195,39 @@ public class WorldAgent extends Agent {
 		// text(Integer.toString(number),x-4,y+5);
 		// }
 
-		void move(){
-		    int target_x, target_y;
-		    if (this.number != 1){
-		        target_x = home[marking].x;
-		        target_y = home[marking].y;
-		        if (target_x > x)
-		          x = x + movement_step;
-		        else 
-		          x = x - movement_step;
-		        if (target_y > y)
-		          y = y + movement_step;
-		        else 
-		          y = y - movement_step;
-		        
-//		      CODICE PRECEDENTE PER RANDOM MOVEMENT
-//		      this.x = this.x + (int) random(20) - 10;
-//		      if (this.x < 50) 
-//		        this.x = 55;
-//		      if (this.x > 550)
-//		         this.x = 500;
-//		      this.y = this.y + (int) random(20) - 10;
-//		      if (this.y < 50) 
-//		        this.y = 55;
-//		      if (this.y > 420)
-//		         this.y = 400;
-		    }
-		    else {
-		     // TODO il portiere deve seguire la palla
-		     this.x = this.x + (int) Math.floor((Math.random()*6) ) - 3;
-		    }
-		  }
+		  void move(){
+			    int target_x, target_y;
+			    if (this.number != 1){
+			        target_x = home[marking-1].x;
+			        target_y = home[marking-1].y;
+			        if (Math.abs(this.x-target_x)+Math.abs(this.y-target_y) > 60) 
+			        {
+			          if (target_x > x)
+			            x = x + movement_step;
+			          else 
+			            x = x - movement_step;
+			          if (target_y > y)
+			            y = y + movement_step;
+			          else 
+			            y = y - movement_step;
+			        }
+//			      CODICE PRECEDENTE PER RANDOM MOVEMENT
+//			      this.x = this.x + (int) random(20) - 10;
+//			      if (this.x < 50) 
+//			        this.x = 55;
+//			      if (this.x > 550)
+//			         this.x = 500;
+//			      this.y = this.y + (int) random(20) - 10;
+//			      if (this.y < 50) 
+//			        this.y = 55;
+//			      if (this.y > 420)
+//			         this.y = 400;
+			    }
+			    else {
+			     // TODO il portiere deve seguire la palla
+			     this.x = this.x + (int) Math.floor((Math.random()*6) ) - 3;
+			    }
+			  }
 	}
 
 	class Offender {
@@ -261,25 +263,52 @@ public class WorldAgent extends Agent {
 		  }
 
 		  void move(){
-		    if ((this.number == ball) && (ball_passed==0)) {
-		      // se sono molto marcato
-		      if (marked(number)!=0) {
-		        ball_passed = 1;
-		        ball = home[findNextPlayer()].number;
-		      }
-		      
-		    }
-		    this.x = this.x + (int) Math.floor((Math.random()*20) ) - 10;
-		    if (this.x < start_x) 
-		      this.x = start_x;
-		    if (this.x > start_x+wdt)
-		       this.x = start_x+wdt;
-		    this.y = this.y + (int) Math.floor((Math.random()*20) ) - 10;
-		    if (this.y < start_y) 
-		      this.y = start_y;
-		    if (this.y > start_y+hdt)
-		       this.y = start_y + hdt;
-		  }
+			    int ball_x =  home[ball-1].x;
+			    int ball_y =  home[ball-1].y;
+			    if ((this.number == ball) && (ball_passed==0)) {
+			      // se sono molto marcato
+			      if (marked(number)!=0) {
+			        ball_passed = 1;
+			        ball = home[findNextPlayer()].number;
+			      }
+			      
+			    }
+			    else {
+			    if (Math.abs(this.x-ball_x)+Math.abs(this.y-ball_y) < 180) {
+			      if (this.x > ball_x) 
+			        this.x -=5;
+			      else 
+			        this.x +=5;
+			        
+			      if (this.y > ball_y) 
+			        this.y -=5;
+			      else 
+			        this.y +=5;
+			        
+			      if (Math.abs(this.x-ball_x)+Math.abs(this.y-ball_y) < 50) {
+			            if (this.x < ball_x) 
+			              this.x -=15;
+			            else 
+			              this.x +=15;
+			              
+			            if (this.y < ball_y) 
+			              this.y -=15;
+			            else 
+			              this.y +=15;
+			        }
+			      }
+			    }
+			    this.x = this.x + (int) Math.floor((Math.random()*20) ) - 10;
+			    if (this.x < start_x) 
+			      this.x = start_x;
+			    if (this.x > start_x+wdt)
+			       this.x = start_x+wdt;
+			    this.y = this.y + (int) Math.floor((Math.random()*20) ) - 10;
+			    if (this.y < start_y) 
+			      this.y = start_y;
+			    if (this.y > start_y+hdt)
+			       this.y = start_y + hdt;
+			  }
 		}
 
 	public class Behaviour0 extends CyclicBehaviour {
@@ -324,7 +353,7 @@ public class WorldAgent extends Agent {
 					myList.add(home[i].x);
 					myList.add(home[i].y);
 					}
-					myList.add(ball);
+					myList.add(ball-1);
 					try {
 						msg.setContentObject(myList);
 					} catch (IOException e) {
@@ -374,7 +403,7 @@ public class WorldAgent extends Agent {
 					e.printStackTrace();
 				}
 				//Aggiorno le marcature
-				away[myList.get(0)].setMan(myList.get(1));
+				away[myList.get(0)].setMan(myList.get(1)+1);
 				replies++;
 //				System.out.println("Ricevuto "+myList.get(0));
 			}
