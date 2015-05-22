@@ -6,9 +6,13 @@ import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.UnreadableException;
 import jade.wrapper.AgentController;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.math.*;
+import java.util.ArrayList;
 
 public class WorldAgent extends Agent {
 
@@ -34,6 +38,7 @@ public class WorldAgent extends Agent {
 	Behaviour1 b1 = new Behaviour1();
 	RequestsServer rs = new RequestsServer();
 	int replies=0;
+	int istante = 0;
 
 	protected void setup() {
 		ball = 1;
@@ -81,7 +86,7 @@ public class WorldAgent extends Agent {
 		away[1].setMan(3);
 		away[2].setMan(2);
 		away[3].setMan(1);
-		away[4].setMan(5);
+		away[4].setMan(4);
 		if (random == 0) {
 
 		}
@@ -193,8 +198,8 @@ public class WorldAgent extends Agent {
 		void move(){
 		    int target_x, target_y;
 		    if (this.number != 1){
-		        target_x = home[marking-1].x;
-		        target_y = home[marking-1].y;
+		        target_x = home[marking].x;
+		        target_y = home[marking].y;
 		        if (target_x > x)
 		          x = x + movement_step;
 		        else 
@@ -280,53 +285,78 @@ public class WorldAgent extends Agent {
 	public class Behaviour0 extends CyclicBehaviour {
 		
 		public void action() {
+			
+			if (ball_passed!=3){
 			ball_passed = 0;
-
 			  for(int i = 0; i < 5; i++)
 			      {
-
 			          home[i].move();
 			          away[i].move();
 			      }
 
 			  for(int i = 0; i < 5; i++)
 			      {
-
-			          //home[i].writeLog();
-			          //home[i].writeLog();
-			          
+				  	System.out.print(away[i].x+","+away[i].y+",");
 			      }
+			  for(int i = 0; i < 5; i++)
+		      {
+			  	System.out.print(home[i].x+","+home[i].y+",");
+		      }
+			  
+			  	System.out.print(ball-1);
+			  	System.out.print(",");
+//			  	System.out.print(","+istante+";");
+			}
 			  if (ball_passed == 1){
+				  	ball_passed=3;
+					removeBehaviour(b0);
+					addBehaviour(b1);
+//				  	System.out.println("Iterazione");
+				  	istante++;
 					ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-					msg.setContent("ball_passed");
+					msg.setProtocol("ball_passed");
+					ArrayList<Integer> myList = new ArrayList<Integer>();
+					for (int i = 0; i < 5; i++){
+					myList.add(away[i].x);
+					myList.add(away[i].y);
+					}
+					for (int i = 0; i < 5; i++){
+					myList.add(home[i].x);
+					myList.add(home[i].y);
+					}
+					myList.add(ball);
+					try {
+						msg.setContentObject(myList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
 					for (int i = 0; i < 4; i++){
 					msg.addReceiver(new AID("a"+i, AID.ISLOCALNAME));
-					System.out.println("Message sent to a"+i);
+//					System.out.println("Message sent to a"+i);
 					}
 					send(msg);
-					removeBehaviour(this);
-					System.out.println("RemovedB0");
-					addBehaviour(b1);
+
+//					System.out.println("RemovedB0");
+
+				
 			  }
 			    
 		}
 
 	}
 	
-	public class Behaviour1 extends OneShotBehaviour {
+	public class Behaviour1 extends CyclicBehaviour {
 		
 		public void action() {
 
 			
-			while(replies<4){
-				try {
-				    Thread.sleep(100);                 //1000 milliseconds is one second.
-				} catch(InterruptedException ex) {
-				    Thread.currentThread().interrupt();
-				}
-			}
-			removeBehaviour(this);
+			if(replies==4){
+			replies=0;
+			removeBehaviour(b1);
 			addBehaviour(b0);
+			ball_passed=0;
+	
+			}
 		}
 
 	}
@@ -335,9 +365,20 @@ public class WorldAgent extends Agent {
 		public void action() {
 		ACLMessage msg = myAgent.receive();
 		if (msg != null) {
-			String info = msg.getContent();			
-			if (info.equals("ACK"))
-			replies++;
+			String type = msg.getProtocol();			
+			if (type.equals("mark_reply")){
+				ArrayList<Integer> myList = new ArrayList<Integer>();
+				try {
+					myList=(ArrayList<Integer>) msg.getContentObject();
+				} catch (UnreadableException e) {
+					e.printStackTrace();
+				}
+				//Aggiorno le marcature
+				away[myList.get(0)].setMan(myList.get(1));
+				replies++;
+//				System.out.println("Ricevuto "+myList.get(0));
+			}
+			
 
 		}
 		else {

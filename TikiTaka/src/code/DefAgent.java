@@ -1,5 +1,8 @@
 package code;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
 import code.WorldAgent.Behaviour0;
 import code.WorldAgent.Behaviour1;
 import jade.core.AID;
@@ -8,6 +11,7 @@ import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.UnreadableException;
 
 public class DefAgent extends Agent {
 	
@@ -49,12 +53,14 @@ public class DefAgent extends Agent {
 	//Behaviours&RequestsServer
 	Behaviour1 b1 = new Behaviour1();
 	Behaviour2 b2 = new Behaviour2();
+	BehaviourX bx = new BehaviourX();
 	RequestsServer rs = new RequestsServer();
 	
 	//GESTIONE MESSAGGI RICEVUTI
 	//messaggi di palla
 	int ball_distance_messages = 0;
 	int wanna_mark_messages = 0;
+	int trash=0;
 
 	protected void setup() {
 		// Wait 1 second
@@ -63,63 +69,108 @@ public class DefAgent extends Agent {
 		} catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
 		}
-		System.out.println("Agent " + getAID().getName() + " created.");
+		System.out.println("Agent " + getAID().getLocalName() + " created.");
 		addBehaviour(rs);
-		this.number = 0;//ASSEGNARE NUMERO CORRETTO!
+		addBehaviour(bx);
+		this.number = 0;
 	}
 
-	public class Behaviour1 extends OneShotBehaviour {
-
+	public class Behaviour1 extends CyclicBehaviour {
+		
 		public void action() {
-			while (ball_distance_messages<4){//Aspetto il responso di tutti sulla distanza da chi ha la palla
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException ex) {
-					Thread.currentThread().interrupt();
-				}
-			}
-//WHY?				// segno che il giocatore con la palla Ã¨ stato marcato.
-//				marked[ball] = 1;
-//				// segno il giocatore che Ã¨ andato a marcare il gicoatore piÃ¹ marcato.
-//				assigned[closest_player] = ball;
+			trash=0;
+			if (ball_distance_messages==3){
+				int closest_player = closestFromBall();
+				// segno che il giocatore con la palla Ã¨ stato marcato.
+				marked[ball] = 1;
+				// segno il giocatore che Ã¨ andato a marcare il gicoatore piÃ¹ marcato.
+				assigned[closest_player] = ball;
 //				// segno anche in wannabe marking
-//				wannabe_marking[closest_player] = ball;
+				wannabe_marking[closest_player] = ball;
 //
 //			
-				if (closestFromBall() == number) {// Sono io il giocatore che deve marcare chi ha la palla
-//					sendMEssage(to WORLD, content: mio numero this.number; mio assegnamento (this.ball))
-//					// vado a stato 0;
+			
+				if (closest_player == number) {// Sono io il giocatore che deve marcare chi ha la palla
+                    trash=3;
                     removeBehaviour(b1);
+					//Avviso il Mondo della mia scelta
+					ACLMessage rep = new ACLMessage(ACLMessage.INFORM);
+					rep.setProtocol("mark_reply");
+					ArrayList<Integer> myRList = new ArrayList<Integer>();
+					myRList.add(number);
+					myRList.add(ball);
+					try {
+						rep.setContentObject(myRList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					rep.addReceiver(new AID("wa", AID.ISLOCALNAME));
+					send(rep);
+					// vado a stato 0;
+
 				}
 				else {// Non sono io il giocatore che deve marcare chi ha la palla
-//
-//					// Calcolo il giocatore libero piu vicino a me e lo segno nel mio assegnamento
+					removeBehaviour(b1);
+					addBehaviour(b2);
+					
+					
+					// Calcolo il giocatore libero piu vicino a me e lo segno nel mio assegnamento
 					chosen_enemy = findClosestPlayer(); 
 					wannabe_marking[number] = chosen_enemy;
 					
-//					// Mando agli altri il messaggio con il mio assegnamento
-//					sendMessage( to: gli altri giocatori cui devo assegnare un marcatore; content: il mio numero this.number e chi voglio marcare this.chosen_enemy)
-//???			    VADO AL BEHAV2
-					removeBehaviour(b1);
-					addBehaviour(b2);
+					// Mando agli altri il messaggio con il mio assegnamento
+					ACLMessage rep = new ACLMessage(ACLMessage.INFORM);
+					rep.setProtocol("mark_intention");
+					ArrayList<Integer> myRList = new ArrayList<Integer>();
+					myRList.add(number);
+					myRList.add(chosen_enemy);
+					try {
+						rep.setContentObject(myRList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					for (int i = 0; i < 4; i++){
+					if (i!=number){
+					rep.addReceiver(new AID("a"+i, AID.ISLOCALNAME));
+					}
+					}
+					send(rep);
+
 				}
-			}
-		}
+			}//Fine IF
+		}//fine action
+		}//FIne behav
 	
 	
 
-	public class Behaviour2 extends OneShotBehaviour {
+	public class Behaviour2 extends CyclicBehaviour {
 
 		public void action() {
-			while (wanna_mark_messages < 2) {// Aspetto il responso di tutti* su chi vogliono marcare *(tutti meno chi è andato sul pallone)
-
+			if (wanna_mark_messages == 2){// Aspetto il responso di tutti* su chi vogliono marcare *(tutti meno chi è andato sul pallone)
+//				System.out.println("Second Check "+myAgent.getLocalName());
+                trash=2;
+                removeBehaviour(b2);
 				if (conflict() == 0) {
+//					System.out.println("No conflicts "+myAgent.getLocalName());
 					// Non c'è conflitto per me, mando il mio assegnamento
-					// sendMessage(to: WORLD; content: this.number;
-					// wannabe_marking[number]);
-					//Vado in stato 0
-					removeBehaviour(b2);
-				} else {
+					//Avviso il Mondo della mia scelta
+					ACLMessage rep = new ACLMessage(ACLMessage.INFORM);
+					rep.setProtocol("mark_reply");
+					ArrayList<Integer> myRList = new ArrayList<Integer>();
+					myRList.add(number);
+					myRList.add(chosen_enemy);
+					try {
+						rep.setContentObject(myRList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					rep.addReceiver(new AID("wa", AID.ISLOCALNAME));
+					send(rep);
+//					System.out.println("Sono "+number);
+					// vado a stato 0;
+                    
+				} 
+				else {
 					//GESTIONE CONFLITTO
 					
 //					// SE SIAMO IN TRE SULLO STESSO DEVE PARTIRE UNA NUOVA ASTA. 
@@ -151,12 +202,25 @@ public class DefAgent extends Agent {
 //						// vado a stato 0
 //						go_to behaviour_0;
 //					}
-//	
-				}
-			}
-
-		}
-	}
+					//PROVVISORIO: OGNUNO MARCA LA SUA SCELTA
+				    ACLMessage rep = new ACLMessage(ACLMessage.INFORM);
+					rep.setProtocol("mark_reply");
+					ArrayList<Integer> myRList = new ArrayList<Integer>();
+					myRList.add(number);
+					myRList.add(chosen_enemy);
+					try {
+						rep.setContentObject(myRList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					rep.addReceiver(new AID("wa", AID.ISLOCALNAME));
+					send(rep);
+//					System.out.println("Sono "+number);
+					//////////////////
+				}//fine else
+			}//fine IF PRINCIPALE
+		}//fine action
+	}//fine behaviour
 		
 
 	public class RequestsServer extends CyclicBehaviour {
@@ -166,39 +230,84 @@ public class DefAgent extends Agent {
 				String type = msg.getProtocol();
 
 				if (type.equals("ball_passed")) {
+					ball_distance_messages = 0;
+					wanna_mark_messages = 0;
+					addBehaviour(b1);
+					number=(int)myAgent.getLocalName().charAt(1);
+					number=number-48;
+//					System.out.println("My name is "+myAgent.getLocalName()+"and my number is "+number);
 					// leggo dal messaggio dove sono i giocatori avversari, dove sono i giocatori amici, chi ha il pallone.
-//					ball = leggo dal messaggio
-//					home_x = leggo dal messaggio
-//					home_y = leggo dal messaggio
-//?					x,y;
-//PERCHE'?			// calcolo la mia distanza da tutti i player;
+					ArrayList<Integer> myList = new ArrayList<Integer>();
+					try {
+						myList=(ArrayList<Integer>) msg.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					ball = myList.get(20);
+//					System.out.println("TEST"+ball);
+//					System.out.println("Procedo");
+					for (int i = 0; i < 5; i++){
+						home_x[i]=myList.get(2*i);
+						home_y[i]=myList.get((2*i)+1);
+						}
+					x=myList.get(2*number+10);
+					y=myList.get(2*number+11);
+					// calcolo la mia distanza da tutti i player;
 					findDistance();
 					// calcolo la mia distanza dall'uomo col pallone.
 					distance_from_ball = Math.abs(home_x[ball] - x) + Math.abs(home_y[ball] - y);
 					distance_away_from_ball[number] = distance_from_ball;
 					// mando i messaggi agli altri con la mia distanza dal pallone e il mio numero. 
-//					sendMessage(to: agli altri player; content: this.number + this.distance_from_ball);
+					ACLMessage rep = new ACLMessage(ACLMessage.INFORM);
+					rep.setProtocol("ball_distance");
+					ArrayList<Integer> myRList = new ArrayList<Integer>();
+					myRList.add(number);
+					myRList.add(distance_from_ball);
+					try {
+						rep.setContentObject(myRList);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+					for (int i = 0; i < 4; i++){
+					if (i!=number){
+					rep.addReceiver(new AID("a"+i, AID.ISLOCALNAME));
+//					System.out.println("I am "+myAgent.getLocalName()+"BDM sent to a"+i);
+					}
+					}
+					send(rep);
 					// vado a behavior 1
-					addBehaviour(b1);
+					
 				}
 
 				if (type.equals("ball_distance")) {
-//         			int player = leggo il numero dal messaggio;
-//					int player_and_ball = leggo la distanza dal pallone dal messaggio;
-//					distance_away_from_ball[player] = player_and_ball;
+					ArrayList<Integer> myList = new ArrayList<Integer>();
+					try {
+						myList=(ArrayList<Integer>) msg.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					//Trascrivo l'informazione ricevuta
+					distance_away_from_ball[myList.get(0)] = myList.get(1);
 					//Segno un messaggio in più tra quelli arrivati
 					ball_distance_messages++;
+//					System.out.println("Sono "+myAgent.getLocalName()+" e ho letto il BDM di "+myList.get(0)+"TOT:"+ball_distance_messages);
 				}
 				
-				if (type.equals("mark_decision")) {
-//         			int player = leggo il numero dal messaggio;
-//					int player_and_ball = leggo la distanza dal pallone dal messaggio;
-//					distance_away_from_ball[player] = player_and_ball;
+				if (type.equals("mark_intention")) {
+					ArrayList<Integer> myList = new ArrayList<Integer>();
+					try {
+						myList=(ArrayList<Integer>) msg.getContentObject();
+					} catch (UnreadableException e) {
+						e.printStackTrace();
+					}
+					//Trascrivo l'informazione ricevuta
+					wannabe_marking[myList.get(0)] = myList.get(1);
 					//Segno un messaggio in più tra quelli arrivati
 					wanna_mark_messages++;
 				}
 
-			} else {
+			} 
+			else {
 				block();
 			}
 		}
@@ -232,7 +341,7 @@ public class DefAgent extends Agent {
 	private void findDistance() {
 		// calcolo la mia distanza tra tutti gli avversari
 		for (int i=0; i<5; i++){
-//?			distance[i] = Math.abs(home_x-x)+Math.abs(home_y.y);   
+		distance[i] = Math.abs(home_x[i]-x)+Math.abs(home_y[i]-y);   
 		}
 	}
 
@@ -249,4 +358,10 @@ public class DefAgent extends Agent {
 		return min_ball_player;
 	}
 
+	public class BehaviourX extends CyclicBehaviour {
+		
+		public void action() {
+			
+		}
+	}
 }
